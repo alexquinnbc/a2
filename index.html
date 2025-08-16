@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Meta-Prompting Toolkit — Single-File</title>
+<meta name="description" content="A glassmorphic, mobile-first, single-file meta-prompt toolkit for refining, validating, branching, recursive scaffolding, Socratic flows, and format enforcement." />
+<style>
+  :root{
+    --bg: 12 14 22;
+    --fg: 244 245 248;
+    --muted: 185 190 204;
+    --acc: 88 153 255;
+    --glass: 255 255 255 / .06;
+    --glow: 88 153 255 / .35;
+    --radius: 16px;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg: 242 244 250;
+      --fg: 26 28 36;
+      --muted: 80 85 100;
+      --glass: 255 255 255 / .7;
+      --glow: 88 153 255 / .25;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    color: rgb(var(--fg));
+    background:
+      radial-gradient(1200px 600px at 20% -10%, rgba(88,153,255,.15), transparent 50%),
+      radial-gradient(900px 600px at 110% 10%, rgba(140,92,255,.12), transparent 50%),
+      rgb(var(--bg));
+  }
+  header{
+    position:sticky; top:0; z-index:50; backdrop-filter: blur(10px);
+    background: linear-gradient(to bottom, rgba(0,0,0,.25), transparent);
+    padding: clamp(12px, 2.4vw, 18px);
+  }
+  .bar{
+    display:flex; gap:12px; align-items:center; justify-content:space-between;
+    max-width: 1100px; margin: 0 auto;
+  }
+  .brand{
+    display:flex; align-items:center; gap:12px; font-weight:700; letter-spacing:.2px;
+  }
+  .logo{
+    width:34px; height:34px; border-radius:10px;
+    background: linear-gradient(135deg, rgba(88,153,255,.8), rgba(140,92,255,.8));
+    box-shadow: 0 8px 28px rgba(88,153,255,.35), inset 0 0 30px rgba(255,255,255,.25);
+  }
+  .actions{display:flex; gap:10px; align-items:center; width:100%; max-width:680px}
+  .search{
+    flex:1; min-width:120px; border:none; outline:none; font: inherit; color: rgb(var(--fg));
+    background: rgba(255,255,255,.06); padding:12px 14px; border-radius: 12px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+  }
+  .btn{
+    border:none; cursor:pointer; font:600 14px/1 ui-sans-serif, system-ui;
+    padding:12px 14px; border-radius: 12px; color:rgb(var(--fg));
+    background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+    transition: transform .06s ease, box-shadow .2s ease, background .2s ease;
+    user-select:none;
+  }
+  .btn:hover{box-shadow: 0 10px 24px rgba(0,0,0,.2), inset 0 0 0 1px rgba(255,255,255,.2)}
+  .btn:active{transform: translateY(1px)}
+  .btn.acc{background: linear-gradient(135deg, rgba(88,153,255,.28), rgba(140,92,255,.28));
+    box-shadow: 0 10px 28px rgba(88,153,255,.25), inset 0 0 0 1px rgba(255,255,255,.25)}
+  .wrap{max-width:1100px; margin:18px auto 80px; padding: 0 clamp(12px, 3vw, 18px)}
+  .grid{
+    display:grid; gap:14px;
+    grid-template-columns: repeat(12, 1fr);
+  }
+  @media (max-width:900px){ .grid{ grid-template-columns: repeat(6, 1fr)} }
+  @media (max-width:640px){ .grid{ grid-template-columns: repeat(2, 1fr)} }
+  .card{
+    grid-column: span 6;
+    background: rgba(var(--glass));
+    border-radius: var(--radius);
+    padding: 14px;
+    border: 1px solid rgba(255,255,255,.14);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(12px) saturate(1.2);
+    position: relative; overflow: clip;
+  }
+  .card.tall{ grid-column: span 12}
+  .card h3{
+    margin:0 0 8px; display:flex; align-items:center; justify-content:space-between;
+    font-size: clamp(16px, 2.4vw, 18px);
+  }
+  .subtitle{opacity:.8; font-size:13px; margin-bottom:10px}
+  .pill{
+    font-size:12px; padding:6px 10px; border-radius:100px; background: rgba(255,255,255,.08);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.16);
+  }
+  .row{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  textarea,input[type="text"]{
+    width:100%; border:none; outline:none; color: rgb(var(--fg)); font: 13px/1.4 ui-sans-serif, system-ui;
+    background: rgba(255,255,255,.06); padding:10px 12px; border-radius: 10px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+  }
+  textarea{ min-height: 86px; resize: vertical }
+  .preview{
+    white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    background: rgba(0,0,0,.28); padding:12px; border-radius: 10px; font-size:12.5px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+  }
+  .kbd{
+    font: 11px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    padding:2px 6px; border-radius:8px; background: rgba(255,255,255,.1);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.2);
+  }
+  .footer{
+    opacity:.7; text-align:center; font-size:12px; padding:24px 8px 44px;
+  }
+  .glow{
+    position:absolute; inset:auto auto -60% -40%; width:420px; height:420px; border-radius:50%;
+    background: radial-gradient(closest-side, rgba(var(--glow)), transparent 70%);
+    filter: blur(18px); pointer-events:none;
+    transform: rotate(8deg);
+  }
+  .switch{
+    display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none;
+  }
+  .switch input{ display:none }
+  .toggle{
+    width:44px; height:26px; background: rgba(255,255,255,.2); border-radius:100px; padding:3px; position:relative;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.25);
+  }
+  .dot{
+    width:20px; height:20px; border-radius:50%; background: white; position:absolute; top:3px; left:3px; transition: left .2s ease;
+    box-shadow: 0 6px 14px rgba(0,0,0,.25);
+  }
+  .toggle[data-on="1"] .dot{ left:21px }
+  .tip{ font-size:12px; opacity:.75}
+  .badges{ display:flex; gap:6px; flex-wrap:wrap }
+  .ghost{ opacity:.55 }
+</style>
+</head>
+<body>
+  <header>
+    <div class="bar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <div style="font-weight:800">Meta-Prompting Toolkit</div>
+          <div style="font-size:12px; opacity:.8">Prompt-of-prompts • iPad-friendly • Single-file</div>
+        </div>
+      </div>
+      <div class="actions">
+        <input id="search" class="search" placeholder="Filter cards (⌘/Ctrl+K)…" />
+        <button class="btn" id="exportTxt" title="Export all previews as a .txt file">Export .txt</button>
+        <button class="btn acc" id="clearAll" title="Clear all inputs">Reset</button>
+        <label class="switch" title="Theme">
+          <span class="tip ghost">Glow</span>
+          <div class="toggle" id="glowToggle" data-on="1"><div class="dot"></div></div>
+        </label>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="grid" id="grid">
+      <!-- Card Template Instances (6 core scaffolds) -->
+      <!-- 1. Refinement -->
+      <section class="card" data-tags="refine clarity improve polish">
+        <div class="glow"></div>
+        <h3>
+          <span>1) Refinement Meta-Prompt</span>
+          <span class="badges">
+            <span class="pill">Polish</span>
+            <span class="pill">Variants</span>
+          </span>
+        </h3>
+        <div class="subtitle">Polish a rough prompt into clearer, deeper, more focused alternatives—then pick a winner.</div>
+        <label class="tip">Your rough prompt</label>
+        <textarea data-key="refine.input" placeholder="Paste your rough prompt here…"></textarea>
+        <div class="row" style="margin-top:8px">
+          <button class="btn acc" data-action="render" data-template="refine">Render</button>
+          <button class="btn" data-action="copy">Copy</button>
+          <button class="btn" data-action="example" data-example="refine">Example</button>
+          <span class="tip">Shortcut: <span class="kbd">⌘/Ctrl</span> + <span class="kbd">Enter</span> to render</span>
+        </div>
+        <div class="preview" data-key="refine.preview" style="margin-top:10px"></div>
+      </section>
+
+      <!-- 2. Validation -->
+      <section class="card" data-tags="validate guardrails checks risks assumptions">
+        <div class="glow"></div>
+        <h3>
+          <span>2) Validation Meta-Prompt</span>
+          <span class="badges">
+            <span class="pill">Assumptions</span>
+            <span class="pill">Risks</span>
+            <span class="pill">Guardrails</span>
+          </span>
+        </h3>
+        <div class="subtitle">Surface assumptions, predict failure modes, and add guardrail instructions.</div>
+        <label class="tip">Prompt to validate</label>
+        <textarea data-key="valid.input" placeholder="Paste the prompt you want to validate…"></textarea>
+        <div class="row" style="margin-top:8px">
+          <button class="btn acc" data-action="render" data-template="valid">Render</button>
+          <button class="btn" data-action="copy">Copy</button>
+          <button class="btn" data-action="example" data-example="valid">Example</button>
+        </div>
+        <div class="preview" data-key="valid.preview" style="margin-top:10px"></div>
+      </section>
+
+      <!-- 3. Branching -->
+      <section class="card" data-tags="branch versions beginner expert practical">
+        <div class="glow"></div>
+        <h3>
+          <span>3) Branching Meta-Prompt</span>
+          <span class="badges">
+            <span class="pill">Beginner</span>
+            <span class="pill">Expert</span>
+            <span class="pill">Practical</span>
+          </span>
+        </h3>
+        <div class="subtitle">Generate three distinct paths: intro, deep-dive, and applied.</div>
+        <label class="tip">Topic</label>
+        <input type="text" data-key="branch.topic" placeholder="e.g., Bayesian inference" />
+        <div class="row" style="margin-top:8px">
+          <button class="btn acc" data-action="render" data-template="branch">Render</button>
+          <button class="btn" data-action="copy">Copy</button>
+          <button class="btn" data-action="example" data-example="branch">Example</button>
+        </div>
+        <div class="preview" data-key="branch.preview" style="margin-top:10px"></div>
+      </section>
+
+      <!-- 4. Recursive -->
+      <section class="card" data-tags="recursive layered starter intermediate advanced structure">
+        <div class="glow"></div>
+        <h3>
+          <span>4) Recursive Meta-Prompt</span>
+          <span class="badges">
+            <span class="pill">Layered</span>
+            <span class="pill">Progressive</span>
+          </span>
+        </h3>
+        <div class="subtitle">Create starter → intermediate → advanced prompts with structure & examples.</div>
+        <label class="tip">Topic</label>
+        <input type="text" data-key="recur.topic" placeholder="e.g., Vector databases" />
+        <div class="row" style="margin-top:8px">
+          <button class="btn acc" data-action="render" data-template="recur">Render</button>
+          <button class="btn" data-action="copy">Copy</button>
+          <button class="btn" data-action="example" data-example="recur">Example</button>
+        </div>
+        <div class="preview" data-key="recur.preview" style="margin-top:10px"></div>
+      </section>
+
+      <!-- 5. Socratic -->
+      <section class="card" data-tags="socratic questions pedagogy sub-questions sequence learning">
+        <div class="glow"></div>
+        <h3>
+          <span>5) Socratic Meta-Prompt</span>
+          <span class="badges">
+            <span class="pill">Guided</span>
+            <span class="pill">Sequenced</span>
+          </span>
+        </h3>
+        <div class="subtitle">Break a question into 5 guiding sub-prompts and order them for learning.</div>
+        <label class="tip">Your question</label>
+        <input type="text" data-key="soc.question" placeholder="e.g., How do transformers learn attention?" />
+        <div class="row" style="margin-top:8px">
+          <button class="btn acc" data-action="render" data-template="soc">Render</button>
+          <button class="btn" data-action="copy">Copy</button>
+          <button class="btn" data-action="example" data-example="soc">Example</button>
+        </div>
+        <div class="preview" data-key="soc.preview" style="margin-top:10px"></div>
+      </section>
+
+      <!-- 6. Format Enforcer -->
+      <section class="card" data-tags="format enforce structure template output">
+        <div class="glow"></div>
+        <h3>
+          <span>6) Format-Enforcer Meta-Prompt</span>
+          <span class="badges">
+            <span class="pill">Consistent Output</span>
+            <span class="pill">Schema</span>
+          </span>
+        </h3>
+        <div class="subtitle">Wrap any prompt so the model always returns a predictable structure.</div>
+        <label class="tip">Your base prompt</label>
+        <textarea data-key="fmt.prompt" placeholder="Describe the topic of diffusion models for non-technical managers…"></textarea>
+        <label class="tip" style="margin-top:8px; display:block">Output shape (edit freely)</label>
+        <textarea data-key="fmt.schema" style="min-height:70px">- Title
+- 3 Key Points
+- Example
+- Next Action Step</textarea>
+        <div class="row" style="margin-top:8px">
+          <button class="btn acc" data-action="render" data-template="fmt">Render</button>
+          <button class="btn" data-action="copy">Copy</button>
+          <button class="btn" data-action="example" data-example="fmt">Example</button>
+        </div>
+        <div class="preview" data-key="fmt.preview" style="margin-top:10px"></div>
+      </section>
+
+      <!-- Composer -->
+      <section class="card tall" data-tags="compose chain pipeline combine">
+        <div class="glow"></div>
+        <h3>
+          <span>Composer: Chain Scaffolds</span>
+          <span class="badges">
+            <span class="pill">Pipeline</span>
+            <span class="pill">One-Click</span>
+          </span>
+        </h3>
+        <div class="subtitle">Select any rendered previews above and stitch them into one pipeline prompt.</div>
+        <div class="row">
+          <label class="tip"><input type="checkbox" class="pick" data-pick="refine.preview"> Refinement</label>
+          <label class="tip"><input type="checkbox" class="pick" data-pick="valid.preview"> Validation</label>
+          <label class="tip"><input type="checkbox" class="pick" data-pick="branch.preview"> Branching</label>
+          <label class="tip"><input type="checkbox" class="pick" data-pick="recur.preview"> Recursive</label>
+          <label class="tip"><input type="checkbox" class="pick" data-pick="soc.preview"> Socratic</label>
+          <label class="tip"><input type="checkbox" class="pick" data-pick="fmt.preview"> Format Enforcer</label>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn acc" id="compose">Compose Selection</button>
+          <button class="btn" id="copyCompose">Copy</button>
+          <span class="tip">Pro-tip: You can edit the schema and re-compose.</span>
+        </div>
+        <div class="preview" id="composeOut" style="margin-top:10px"></div>
+      </section>
+    </div>
+
+    <div class="footer">
+      <div>Shortcuts: <span class="kbd">⌘/Ctrl+K</span> focus search • <span class="kbd">⌘/Ctrl+Enter</span> render focused card • <span class="kbd">Esc</span> clear search</div>
+      <div style="margin-top:6px">All inputs auto-save to your browser. No data leaves your device.</div>
+    </div>
+  </main>
+
+<script>
+/* ---------- Templates ---------- */
+const TEMPLATES = {
+  refine: ({input}) => `You are a prompt refiner.
+Take the following prompt: """${input?.trim() || '[[INSERT PROMPT]]'}"""
+1) Identify ambiguities.
+2) Produce 3 improved versions (clarity, focus, depth).
+3) Recommend the best version and explain why.
+Return in this structure:
+- Ambiguities
+- Variant A
+- Variant B
+- Variant C
+- Recommendation (with reasoning)`,
+
+  valid: ({input}) => `You are a prompt validator.
+Prompt: """${input?.trim() || '[[PROMPT TO VALIDATE]]'}"""
+Tasks:
+- List required assumptions.
+- Predict failure modes (how the model may go wrong).
+- Add guardrail instructions to mitigate risks.
+Output:
+- Assumptions
+- Failure Modes
+- Guardrails (add directly as bullet instructions to prepend)`,
+
+  branch: ({topic}) => `You are a branching prompt designer.
+Topic: ${topic?.trim() || '[[TOPIC]]'}
+Create 3 distinct prompts:
+1) Beginner-friendly explanation (plain language, analogies).
+2) Expert-level technical deep dive (theory, proofs/references if relevant).
+3) Practical application with 2–3 concrete examples or mini-exercises.
+Return:
+- Beginner Prompt
+- Expert Prompt
+- Practical Prompt`,
+
+  recur: ({topic}) => `You are a recursive prompt generator.
+Build layered prompts about: ${topic?.trim() || '[[TOPIC]]'}
+Step 1 — Starter: simple, approachable prompt.
+Step 2 — Intermediate: add structure, steps, and checks.
+Step 3 — Advanced: include validation, examples, and formatting rules.
+Return:
+- Starter
+- Intermediate
+- Advanced`,
+
+  soc: ({question}) => `You are a Socratic prompt designer.
+Question: ${question?.trim() || '[[QUESTION]]'}
+Break it into 5 guiding sub-questions. Turn each into a standalone prompt and order them for progressive learning.
+Return:
+- Q1 + Prompt
+- Q2 + Prompt
+- Q3 + Prompt
+- Q4 + Prompt
+- Q5 + Prompt
+- Suggested Sequence Notes`,
+
+  fmt: ({prompt, schema}) => `You are a formatting enforcer.
+Base prompt: """${prompt?.trim() || '[[BASE PROMPT]]'}"""
+Always return the output using this structure (no extra sections):
+${(schema || '- Title\\n- 3 Key Points\\n- Example\\n- Next Action Step').trim()}
+
+If a section lacks information, include the header with "None".`
+};
+
+/* ---------- State Helpers ---------- */
+const $ = (sel, root=document) => root.querySelector(sel);
+const $$ = (sel, root=document) => [...root.querySelectorAll(sel)];
+
+function save(key, val){ try{ localStorage.setItem(key, val) }catch{} }
+function load(key, def=''){ try{ return localStorage.getItem(key) ?? def }catch{ return def } }
+
+function attachPersistence(){
+  $$('textarea,[data-key][type="text"]').forEach(el=>{
+    const key = el.dataset.key;
+    if(!key) return;
+    const v = load(key, '');
+    if(v) el.value = v;
+    el.addEventListener('input', ()=> save(key, el.value));
+  });
+  $$('.preview[data-key]').forEach(el=>{
+    const key = el.dataset.key;
+    const v = load(key, '');
+    if(v) el.textContent = v;
+  });
+  const composePersist = load('composeOut','');
+  if(composePersist) $('#composeOut').textContent = composePersist;
+}
+
+function renderCard(btn){
+  const card = btn.closest('.card');
+  const which = btn.dataset.template;
+  const data = {};
+  // collect inputs for this card
+  $$('[data-key]', card).forEach(el=>{
+    const k = el.dataset.key.split('.').pop();
+    data[k] = el.value ?? '';
+  });
+  const tpl = TEMPLATES[which];
+  const out = tpl ? tpl(data) : 'Template not found.';
+  const preview = $('.preview[data-key$="preview"]', card);
+  preview.textContent = out;
+  save(preview.dataset.key, out);
+  // subtle flash
+  preview.animate([{opacity:.6},{opacity:1}],{duration:220});
+}
+
+function copyFromCard(btn){
+  const card = btn.closest('.card');
+  const preview = $('.preview[data-key$="preview"]', card);
+  const text = preview.textContent.trim();
+  navigator.clipboard.writeText(text || '').then(()=>{
+    toast('Copied preview');
+  });
+}
+
+function toast(msg){
+  const n = document.createElement('div');
+  n.textContent = msg;
+  n.style.position='fixed';
+  n.style.left='50%'; n.style.top='18px'; n.style.transform='translateX(-50%)';
+  n.style.background='rgba(0,0,0,.75)'; n.style.color='#fff';
+  n.style.padding='10px 14px'; n.style.borderRadius='10px'; n.style.fontSize='13px';
+  n.style.boxShadow='0 8px 24px rgba(0,0,0,.3)'; n.style.zIndex='1000';
+  document.body.appendChild(n);
+  setTimeout(()=> n.remove(), 1200);
+}
+
+function fillExample(btn){
+  const kind = btn.dataset.example;
+  const map = {
+    refine: 'Write a LinkedIn post about AI that goes viral.',
+    valid: 'Summarize this PDF and extract all tables into CSV.',
+    branch: 'Bayesian inference for product A/B testing',
+    recur: 'Vector databases for RAG pipelines',
+    soc: 'How do transformers learn attention?',
+    fmt: 'Explain diffusion models to non-technical managers in 200 words.'
+  };
+  const card = btn.closest('.card');
+  const inputs = $$('textarea,input[type="text"]', card);
+  if(inputs.length){
+    // simple fill for first input(s)
+    if(kind==='fmt' && inputs.length>=2){
+      inputs[0].value = map[kind];
+      inputs[1].value = '- Title\n- 3 Key Points\n- Example\n- Next Action Step';
+      inputs.forEach(i=> save(i.dataset.key, i.value));
+    } else {
+      inputs[0].value = map[kind];
+      save(inputs[0].dataset.key, inputs[0].value);
+    }
+    toast('Example filled');
+  }
+}
+
+function compose(){
+  const picks = $$('.pick:checked');
+  const chunks = [];
+  picks.forEach(cb=>{
+    const key = cb.dataset.pick;
+    const el = $(`.preview[data-key="${key}"]`);
+    const text = (el?.textContent || '').trim();
+    if(text) chunks.push(text);
+  });
+  const out = chunks.length ? chunks.join('\n\n---\n\n') : 'Select previews to compose.';
+  $('#composeOut').textContent = out;
+  save('composeOut', out);
+  toast('Composed');
+}
+
+function exportTxt(){
+  // gather all previews in order + composed
+  const blocks = [];
+  $$('.card .preview[data-key]').forEach(p=>{
+    const title = p.closest('.card').querySelector('h3 span')?.textContent?.trim() || 'Preview';
+    const body = p.textContent.trim();
+    if(body) blocks.push(`# ${title}\n\n${body}`);
+  });
+  const composed = $('#composeOut').textContent.trim();
+  if(composed) blocks.push(`# COMPOSED PIPELINE\n\n${composed}`);
+  const blob = new Blob([blocks.join('\n\n\n')], {type:'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), {href:url, download:'meta-prompts.txt'});
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function clearAll(){
+  if(!confirm('Reset all inputs and previews?')) return;
+  localStorage.clear();
+  location.reload();
+}
+
+/* ---------- Events ---------- */
+document.addEventListener('click', e=>{
+  const t = e.target;
+  if(t.matches('[data-action="render"]')) renderCard(t);
+  if(t.matches('[data-action="copy"]')) copyFromCard(t);
+  if(t.matches('[data-action="example"]')) fillExample(t);
+  if(t.matches('#compose')) compose();
+  if(t.matches('#copyCompose')){
+    navigator.clipboard.writeText($('#composeOut').textContent.trim()).then(()=> toast('Copied composition'));
+  }
+  if(t.matches('#exportTxt')) exportTxt();
+  if(t.matches('#clearAll')) clearAll();
+  if(t.matches('#glowToggle, #glowToggle *')){
+    const tog = $('#glowToggle');
+    const on = tog.dataset.on === '1' ? '0' : '1';
+    tog.dataset.on = on;
+    document.querySelectorAll('.glow').forEach(g=> g.style.display = on==='1' ? 'block':'none');
+  }
+});
+
+document.addEventListener('keydown', e=>{
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); $('#search').focus(); $('#search').select(); }
+  if((e.ctrlKey||e.metaKey) && e.key === 'Enter'){
+    const active = document.activeElement;
+    const card = active?.closest?.('.card') || null;
+    if(card){
+      const btn = $('[data-action="render"]', card);
+      if(btn) { e.preventDefault(); renderCard(btn); }
+    }
+  }
+  if(e.key==='Escape' && document.activeElement === $('#search')) $('#search').blur();
+});
+
+$('#search').addEventListener('input', e=>{
+  const q = e.target.value.toLowerCase().trim();
+  $$('#grid .card').forEach(c=>{
+    const tags = (c.dataset.tags || '').toLowerCase();
+    const title = c.querySelector('h3')?.innerText.toLowerCase() || '';
+    c.style.display = (tags.includes(q) || title.includes(q) || q==='') ? '' : 'none';
+  });
+});
+
+/* ---------- Init ---------- */
+attachPersistence();
+</script>
+</body>
+</html>
